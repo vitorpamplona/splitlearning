@@ -21,8 +21,8 @@ client_send_to = 'MIT'
 transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5,), (0.5,)),])
 
 #download dataset
-trainset = datasets.MNIST('/Users/vitorhome/Documents/workspace/splitlearning_relayserver/datasets/train', download=True, train=True, transform=transform)
-valset = datasets.MNIST('/Users/vitorhome/Documents/workspace/splitlearning_relayserver/datasets/val', download=True, train=False, transform=transform)
+trainset = datasets.MNIST('/tmp/splitlearning_relayserver/datasets/train', download=True, train=True, transform=transform)
+valset = datasets.MNIST('/tmp/splitlearning_relayserver/datasets/val', download=True, train=False, transform=transform)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
 valloader = torch.utils.data.DataLoader(valset, batch_size=64, shuffle=True)
