@@ -7,6 +7,13 @@ Simple MNIST Machine Learning code in three ways:
 
 # Running
 
+# Packages: 
+
+pip3 install torch --upgrade
+pip3 install torchvision --upgrade
+pip3 install matplotlib --upgrade
+pip3 install numpy --upgrade
+
 Open 5 terminal windows and run in this sequence. 
 
 ## Terminal 1: Normal code
