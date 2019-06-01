@@ -38,7 +38,6 @@ def server_program():
 
     server_socket = socket.socket()  # get instance
     server_socket.bind((host, port))  # bind host address and port together
-    server_socket.settimeout(30)
 
     # configure how many clients the server can listen simultaneously
     server_socket.listen(2)
