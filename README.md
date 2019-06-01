@@ -51,11 +51,14 @@ sudo hostnamectl set-hostname mit-relay
 sudo shutdown -r now
 ```
 
-Setup GIT
+Create a Personal Access Token at https://github.mit.edu/settings/tokens (permissions: admin:repo_hook, notifications, read:discussion, read:org, repo, user) to Setup GIT
 ```
 git config --global user.email "<YOUR EMAIL>"
 git config --global user.name "<YOUR USERNAME>"
+git config credential.helper store
 git clone https://github.mit.edu/vitor-1/split_learning_relay_server.git
+Username: <YOUR USERNAME>
+Password: <YOUR ACESS TOKEN>
 ```
 
 Install Python for the server
@@ -74,7 +77,7 @@ pip3 install numpy
 
 Pytorch needs at least 1.5GB of RAM. If you need more memory, don't forget to add a swap file 
 ```
-sudo dd if=/dev/zero of=/swapfile bs=1k count=2048k
+sudo dd if=/dev/zero of=/swapfile bs=1k count=4096k
 sudo chown root:root /swapfile
 sudo chmod 0600 /swapfile
 sudo mkswap /swapfile
