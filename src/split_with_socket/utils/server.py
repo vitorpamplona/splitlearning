@@ -68,8 +68,8 @@ def wait_for_next_message(clientsocket, client_id):
     msgRaw = clientsocket.recv(buffer_size).decode()
 
     while msgRaw:      
-        #print("Message received from " + client_id + ": " + msgRaw)
-        print("Message received from " + client_id)
+        print("Message received from " + client_id + ": " + msgRaw)
+        #print("Message received from " + client_id)
 
         try: 
             # unpack json format {"to": client_send_to, "data": data}
