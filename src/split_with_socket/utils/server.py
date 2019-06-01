@@ -25,7 +25,7 @@ import socket # for connecting to the server
 import _thread # to manage multiple clients
 import json # to enconde and decode the data
 
-host = '127.0.0.1' # host public IP address
+host = '0.0.0.0' # host public IP address
 port = 5004  # initiate port no above 1024
 buffer_size = 35000
 
