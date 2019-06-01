@@ -74,7 +74,6 @@ def wait_for_next_message(clientsocket, client_id):
         try: 
             # unpack json format {"to": client_send_to, "data": data}
             msgDict = json.loads(msgRaw)
-            print("Message received from " + client_id + ": " + msgDict['data'])
 
             if 'repeat' in msgDict:
                 # send last message again.
