@@ -57,7 +57,7 @@ def wait_for_next_message(client_id):
     msgRaw = atomic_socket.recv(clientsocket)
 
     while msgRaw:      
-        print("Message received from " + client_id + ": " + msgRaw)
+        print("Message received from " + client_id) #  + ": " + msgRaw
     
         try: 
             obj = protocol.parse_data_msg(msgRaw)
@@ -70,7 +70,7 @@ def wait_for_next_message(client_id):
                 if obj.client_id in clients.keys():
                     #reformat the message and store it if we need to repeat it.    
                     lastFormattedMsg[obj.client_id] = protocol.relay_message(client_id,  obj.data)
-                    print('Sending message to ' + obj.client_id + ' with data ' + lastFormattedMsg[obj.client_id])
+                    print('Sending message to ' + obj.client_id) # ' with data ' + lastFormattedMsg[obj.client_id]
                     # sending it to the next partner   
                     atomic_socket.send(clients[obj.client_id], lastFormattedMsg[obj.client_id])
                 else:
