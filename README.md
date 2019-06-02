@@ -30,6 +30,11 @@ Expected output: Model Accuracy = 0.9742
 python3 src/split_with_socket/utils/server.py
 ```
 
+if you need to kill the process associated with the port, type:
+```
+sudo fuser -k 8000/tcp
+```
+
 ### Terminal 4: Run MIT
 ```
 python3 src/split_with_socket/mnistMIT.py
