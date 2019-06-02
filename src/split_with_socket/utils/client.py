@@ -1,7 +1,7 @@
 # Simple client library for the relay server, a communication server where two clients 
 # connect to and can message each other by name. 
 # 
-# It sends socket connections with a specific json protocol and guarantees the delivery of 
+# It sends socket connections with the relay protocol and guarantees the delivery of 
 #   the messages to the server and back to the client. 
 #
 # 1. Registration: {"client_id": client_id}
@@ -17,18 +17,19 @@
 #   4. disconnect() closes the socket. 
 
 import socket # for connecting to the server
-import json # to enconde and decode the data
 import time
-import pickle
-import base64
+import utils.relay_protocol as protocol
+import utils.atomic_socket as atomic_socket
+import pickle # object serialization 
+import base64 # Make sure the serialized object can be transformed into a string
 
 buffer_size = 35000
 
 # instantiate
-client_socket = socket.socket()  
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
 client_name = ''
 
-last_message = ''.encode()
+last_message = ''
 
 def connect(relay_server_host, relay_server_port, client_id):
     global client_name
@@ -39,54 +40,47 @@ def connect(relay_server_host, relay_server_port, client_id):
     client_socket.connect((relay_server_host, relay_server_port)) 
 
     # register this computer by name
-    client_socket.send(format_client_id_msg(client_id))  
+    atomic_socket.send(client_socket, protocol.register(client_id))
 
     # Wait for 1 second otherwise socket concatenates the two sends
     time.sleep(1)
 
 def sendData(to, data):
-    serialized_bytes = base64.b64encode(pickle.dumps(data))
-    serialized_str = serialized_bytes.decode('utf-8')
-    print('Sending ' + data.__class__.__name__ + ' data to ' + to + ' with '+str(len(serialized_str))+' bytes')
     global last_message
-    last_message = format_data_msg(to, serialized_str)
-    client_socket.send(last_message)
+    print('Sending ' + data.__class__.__name__ + ' data to ' + to)
+    last_message = protocol.send(to, serializeObjToStr(data))
+    atomic_socket.send(client_socket, last_message)
 
 def receiveData():
     while True: 
         try:
-            msg = parse_data_msg(client_socket.recv(buffer_size))
+            msgRaw = atomic_socket.recv(client_socket)
+            obj = protocol.parse_data_msg(msgRaw)
 
-            if 'repeat' in msg.keys():
-                print(last_message)
-                client_socket.send(last_message)
-            elif 'error' not in msg.keys():
-                #print('Received data ' + msg['data'] + ' from ' + msg['from'])
-                
-                serialized_data = base64.b64decode(msg['data'].encode('utf-8'))
-                object = pickle.loads(serialized_data)
-                print('Received  ' + object.__class__.__name__ + ' data from ' + msg['from'])
+            if type(obj) is protocol.Repeat:
+                print('Repeating: ' + last_message)
+                atomic_socket.send(client_socket, last_message)
+            elif type(obj) is protocol.PartnerNotConnected:
+                print('Error: ' + obj.client_id + ' not connected')
+            elif type(obj) is protocol.ReceivedFrom:
+                object = deserializeStrToObj(obj.data)
+                print('Received ' + object.__class__.__name__ + ' data from ' + obj.client_id)
                 return object
-            else:
-                print('Error, other client wasn\'t connected')
         except Exception as inst:
             print(inst)
-            client_socket.send(format_repeat(client_name))
+            atomic_socket.send(client_socket, protocol.repeat(client_name))
 
     return
 
+def serializeObjToStr(data):
+    picked_byte_representation = pickle.dumps(data)
+    serialized_bytes = base64.b64encode(picked_byte_representation)
+    return serialized_bytes.decode('utf-8')
+
+def deserializeStrToObj(str): 
+    encodedStr = str.encode('utf-8')
+    picked_byte_representation = base64.b64decode(encodedStr)
+    return pickle.loads(picked_byte_representation)    
+
 def disconnect():
     client_socket.close()  # close the connection
-
-def format_data_msg(to, data):
-    message = {"to": to, "data": data}
-    return json.dumps(message).encode()
-
-def format_client_id_msg(client_id):
-    return json.dumps({"client_id": client_id}).encode()
-
-def format_repeat(client_id):
-    return json.dumps({"from": client_id, "repeat": "last_one"}).encode()
-
-def parse_data_msg(data):
-    return json.loads(data.decode()) 

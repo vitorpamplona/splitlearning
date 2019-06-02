@@ -1,29 +1,15 @@
-# Simple relay server, a communication server where two clients 
+# Simple relay server: a communication server where two clients 
 # connect to and can message each other by name
 # 
-# It accepts socket connections with a specific json protocol: 
-#
-# 1. Registration: {"client_id": client_id}
-#   This informs the server the name of the current socket connection
-#
-# 2. Send message to: {"to": the_other_client_id, "data": any object}
-#   Informs the server to send the data to another known client
-# 
-# If the client is not found, the server returns: 
-#   Client not connected: {"error": [name of the requested client] ' not found'}
-# 
-# If the message arrives broken, the server asks the client to send again: 
-#   Repeat last message: {"repeat":'broken message'}
-# 
-# The client can also ask the server to send the message again by: 
-#   Repeat last message: {"from": client_id, "repeat": "last_one"}
+# It accepts socket connections with the relay protocol
 #
 # USAGE: 
 #   python server.py
 
 import socket # for connecting to the server
+import atomic_socket
 import _thread # to manage multiple clients
-import json # to enconde and decode the data
+import relay_protocol as protocol
 
 host = '0.0.0.0' # host public IP address
 port = 5004  # initiate port no above 1024
@@ -33,10 +19,10 @@ clients = {} # {id, socket} list of all clients connected to the server.
 lastFormattedMsg = {} # {id,message}
 
 def server_program():
-    print('Starting Splitlearning Relay Server at ' + host + ':' + str(port))  # show in terminal
+    print('Starting Relay Server at ' + host + ':' + str(port))  # show in terminal
     print('Waiting for clients...')
 
-    server_socket = socket.socket()  # get instance
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # get instance
     server_socket.bind((host, port))  # bind host address and port together
 
     # configure how many clients the server can listen simultaneously
@@ -50,52 +36,57 @@ def server_program():
 
 def on_new_client(clientsocket, addr):
     # wait for the first message, the client's name. 
-    msgRaw = clientsocket.recv(1024).decode()
+    msgRaw = atomic_socket.recv(clientsocket)
 
-    # unpack Json {"client_id": client_id}
-    msgDict = json.loads(msgRaw)
+    # First object is a registration object. 
+    # Register the name of the client into the list. 
+    obj = protocol.parse_data_msg(msgRaw)
 
-    print("Connection from: " + str(addr) + " " + msgDict['client_id'])
+    print("Connection from: " + str(addr) + " " + obj.client_id)
     
     # Register the socket name at a list. 
-    clients[msgDict['client_id']] = clientsocket
+    clients[obj.client_id] = clientsocket
 
     # keeps waitinf for the messages. 
-    wait_for_next_message(clientsocket, msgDict['client_id'])
+    wait_for_next_message(obj.client_id)
 
-def wait_for_next_message(clientsocket, client_id): 
-    # wait for a message. 
-    msgRaw = clientsocket.recv(buffer_size).decode()
+def wait_for_next_message(client_id): 
+    clientsocket = clients[client_id]
+
+    # keeps waitinf for the messages. 
+    # msgRaw = clientsocket.recv(buffer_size)
+    msgRaw = atomic_socket.recv(clientsocket)
 
     while msgRaw:      
         print("Message received from " + client_id + ": " + msgRaw)
-        #print("Message received from " + client_id)
-
+    
         try: 
-            # unpack json format {"to": client_send_to, "data": data}
-            msgDict = json.loads(msgRaw)
+            obj = protocol.parse_data_msg(msgRaw)
+            print("Object decoded " + obj.__class__.__name__)
 
-            if 'repeat' in msgDict:
-                # send last message again.
-                print('Repeating')
-                clients[msgDict['from']].send(lastFormattedMsg[msgDict['from']])  # send data to the client
-            elif msgDict['to'] in clients.keys():
-                #reformat the message    
-                formattedMsg = json.dumps({'from': client_id, 'data': msgDict['data']})
-                # sending it to the next partner   
-                clients[msgDict['to']].send(formattedMsg.encode())  # send data to the client
-                lastFormattedMsg[msgDict['to']] = formattedMsg
-            else:
-                print(msgDict['to'] + ' is not connected')
-                # could not find the other socket 
-                # sending error message back.
-                clientsocket.send(json.dumps({'error':msgDict['to']+ ' not found'}).encode())  # send data to the client
+            if type(obj) is protocol.Repeat:
+                print('Repeating the message ' + lastFormattedMsg[obj.client_id])
+                atomic_socket.send(clientsocket, lastFormattedMsg[obj.client_id])
+            elif type(obj) is protocol.SendTo: 
+                if obj.client_id in clients.keys():
+                    #reformat the message and store it if we need to repeat it.    
+                    lastFormattedMsg[obj.client_id] = protocol.relay_message(client_id,  obj.data)
+                    print('Sending message to ' + obj.client_id + ' with data ' + lastFormattedMsg[obj.client_id])
+                    # sending it to the next partner   
+                    atomic_socket.send(clients[obj.client_id], lastFormattedMsg[obj.client_id])
+                else:
+                    print(obj.client_id + ' is not connected. Sending error message back.')
+                    atomic_socket.send(clientsocket, protocol.not_connected(obj.client_id))
+            else: 
+                print('Unexpected object ' + obj.__class__.__name__ + ' as a reply to server')
+        
         except Exception as inst:
+            print('Exception')
             print(inst)
-            clientsocket.send(json.dumps({'repeat':'broken message'}).encode()) 
+            atomic_socket.send(clientsocket, protocol.repeat(client_id))
 
         #wait for next message
-        msgRaw = clientsocket.recv(buffer_size).decode()
+        msgRaw = atomic_socket.recv(clientsocket)
 
     clientsocket.close()
 
