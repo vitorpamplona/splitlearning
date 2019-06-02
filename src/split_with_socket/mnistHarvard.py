@@ -95,6 +95,7 @@ def train(client, model):
 
 def test(client, model):
     correct_count, all_count = 0, 0
+    image_idx = 0
     for images,labels in valloader:
         for i in range(len(labels)):
             img = images[i].view(1, 784)
@@ -118,6 +119,10 @@ def test(client, model):
                 correct_count += 1
 
             all_count += 1
+
+            print("Eval {} Label {} - Evaluation: {}".format(image_idx, i, true_label == pred_label))
+
+        image_idx += 1
 
     print("Number Of Images Tested =", all_count)
     print("\nModel Accuracy =", (correct_count/all_count))
