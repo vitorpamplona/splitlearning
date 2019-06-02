@@ -13,7 +13,6 @@ import relay_protocol as protocol
 
 host = '0.0.0.0' # host public IP address
 port = 5004  # initiate port no above 1024
-buffer_size = 35000
 
 clients = {} # {id, socket} list of all clients connected to the server.  
 lastFormattedMsg = {} # {id,message}
